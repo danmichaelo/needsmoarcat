@@ -31,14 +31,17 @@ def sout(m):
     sys.stdout.flush()
 
 
-def get_subcats(cat_name, exceptions):
+def get_subcats(cat_name, exceptions, path=[]):
     sout('.')
     cats = [cat_name]
     cur.execute('SELECT page.page_title FROM page, categorylinks WHERE categorylinks.cl_to=? AND categorylinks.cl_type="subcat" AND categorylinks.cl_from=page.page_id', [cat_name.encode('utf-8')])
     for row in cur.fetchall():
         subcat = row[0].decode('utf-8')
         if subcat not in exceptions:
-            cats.extend(get_subcats(subcat, exceptions))
+            if len(path) > 20:
+                print("WARN: cat path exceeds max depth: {}".format(' > '.join(path)))
+                sys.exit(1)
+            cats.extend(get_subcats(subcat, exceptions, path + [cat_name]))
     return list(set(cats))
 
 
@@ -73,6 +76,18 @@ def get_pagecats(pageids):
             cats[row[0]].append(row[1].decode('utf-8'))
     return cats
 
+
+def hiddenonly(catnames):
+    chunksize = 1000
+    filtered = []
+    for n in range(0, len(catnames), chunksize):
+        sout('.')
+        tp = [x.encode('utf-8') for x in catnames[n:n+chunksize]]
+
+        cur.execute('SELECT page_title FROM page, page_props WHERE page_id=pp_page AND page_namespace=14 AND pp_propname="hiddencat" AND page_title IN ({})'.format(', '.join('?' * len(tp))), tp)
+        for row in cur.fetchall():
+            filtered.append(row[0].decode('utf-8'))
+    return filtered
 
 def main(maintenance_exceptions):
     ignorecats = ['Personer_fra_', 'Fødsler_i_', 'Dødsfall_i_']
@@ -129,22 +144,28 @@ def main(maintenance_exceptions):
         page_title = page[1].decode('utf-8')
         if re.match(ignorepages, page_title) is None:
             titles.append(page_title.replace('_', ' '))
-        
+
     print('Found {} matching titles'.format(len(titles)))
     return titles
 
-#    f.write(('* [[{{ns:%s}}:%s]]\n' % (page[0], page_title)).encode('utf-8'))
 
 def main2(maintenance_exceptions):
     sout('Reading category tree')
     if os.path.exists('subcats.cache'):
         sout(' from cache')
         mcats = pickle.load(open('subcats.cache', 'r'))
+        sout('\n')
+        print('Read {} maintenance categories'.format(len(mcats)))
     else:
         mcats = get_subcats('Wikipedia-vedlikehold', maintenance_exceptions)
+        sout('\n')
+        # pickle.dump(mcats, open('subcats.raw.cache', 'w'))
+        # mcats = pickle.load(open('subcats.raw.cache', 'r'))
+        print('Read {} maintenance categories'.format(len(mcats)))
+        mcats = hiddenonly(mcats)
+        print('... of which {} hidden'.format(len(mcats)))
         pickle.dump(mcats, open('subcats.cache', 'w'))
-    sout('\n')
-    print('Read {} maintenance categories'.format(len(mcats)))
+        # sys.exit(1)
 
     sout('Reading member pages')
     if os.path.exists('pageids2.cache'):
@@ -199,6 +220,7 @@ def update_page(site, pagename, titles):
     titles = sorted(titles)
     text = '\n'.join('* [[{}]]'.format(title) for title in titles)
     newtext = '{}{}{:d} sider:\n\n{}'.format(origtext[0:p], beginlistmarker, len(titles), text)
+    # print(newtext)
     page.save(newtext, 'Bot: Oppdaterer liste')
 
 
@@ -209,6 +231,7 @@ site.login(mwconf['user'], mwconf['passwd'])
 
 maintenance_exceptions = ['Mangler_interwiki', 'Kategorier_som_trenger_diffusjon', 'Artikler_som_bør_flettes', 'Artikler_som_bør_flyttes']
 
-update_page(site, 'Wikipedia:Kategorifattige biografier', main(maintenance_exceptions))
+# update_page(site, 'Wikipedia:Kategorifattige biografier', main(maintenance_exceptions))
 update_page(site, 'Wikipedia:Artikler med kun vedlikeholdskategorier', main2(maintenance_exceptions))
+
 
