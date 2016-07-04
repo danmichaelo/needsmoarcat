@@ -7,6 +7,7 @@ import os
 import pickle
 import oursql
 import re
+from datetime import datetime
 import mwclient
 import ConfigParser
 
@@ -14,8 +15,10 @@ db = oursql.connect(db='nowiki_p',
                     host='nowiki.labsdb',
                     read_default_file=os.path.expanduser('~/replica.my.cnf'),
                     charset=None,
-                    use_unicode=False
+                    use_unicode=False,
+                    autoreconnect=True
                     )
+# db.ping(True)
 cur = db.cursor()
 
 
@@ -201,7 +204,10 @@ def main2(maintenance_exceptions):
     titles = []
     for page_id in plist:
         cur.execute('SELECT page_namespace, page_title FROM page WHERE page_id=? LIMIT 1', [int(page_id)])
-        page = cur.fetchall()[0]
+        try:
+            page = cur.fetchall()[0]
+        except IndexError:
+            print('ERROR: Failed to lookup page {}'.format(page_id))
         page_title = page[1].decode('utf-8')
         if page[0] == 0:
             titles.append(page_title.replace('_', ' '))
@@ -219,9 +225,12 @@ def update_page(site, pagename, titles):
         raise StandardError('Uh oh, begin list marker not found')
     titles = sorted(titles)
     text = '\n'.join('* [[{}]]'.format(title) for title in titles)
-    newtext = '{}{}{:d} sider:\n\n{}'.format(origtext[0:p], beginlistmarker, len(titles), text)
+    dt = datetime.now().strftime('%Y-%m-%d')
+    newtext = '{}{}{:d} sider (oppdatert {}):\n\n{}'.format(origtext[0:p], beginlistmarker, len(titles), dt, text)
+    print('New text ready')
     # print(newtext)
     page.save(newtext, 'Bot: Oppdaterer liste')
+    print('New text saved')
 
 
 conf = get_config('config.cnf')
@@ -229,9 +238,10 @@ mwconf = dict(conf.items('mw'))
 site = mwclient.Site(mwconf['host'])
 site.login(mwconf['user'], mwconf['passwd'])
 
-maintenance_exceptions = ['Mangler_interwiki', 'Kategorier_som_trenger_diffusjon', 'Artikler_som_bør_flettes', 'Artikler_som_bør_flyttes']
+maintenance_exceptions = ['Mangler_interwiki', 'Kategorier_som_trenger_diffusjon', 'Artikler_som_bør_flettes', 'Artikler_som_bør_flyttes', 'Sider_som_er_foreslått_slettet', 'Kategorier_som_trenger_diffusjon', 'Kvinner', 'Menn']
 
-# update_page(site, 'Wikipedia:Kategorifattige biografier', main(maintenance_exceptions))
-update_page(site, 'Wikipedia:Artikler med kun vedlikeholdskategorier', main2(maintenance_exceptions))
+update_page(site, 'Wikipedia:Kategorifattige biografier', main(maintenance_exceptions))
+#update_page(site, 'Wikipedia:Artikler med kun vedlikeholdskategorier', main2(maintenance_exceptions))
 
+print('Exiting')
 
