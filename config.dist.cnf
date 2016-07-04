@@ -1,5 +1,17 @@
-[mw]
-host=no.wikipedia.org
+[db]
+host=
+db=
 user=
 passwd=
+
+[site]
+host=no.wikipedia.org
+consumer_token=
+consumer_secret=
+access_token=
+access_secret=
 clients_useragent=DanmicholoBot. Run by User:Danmichaelo
+
+[options]
+page=
+summary=Bot: Oppdaterer liste

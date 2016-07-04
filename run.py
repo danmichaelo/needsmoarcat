@@ -234,9 +234,9 @@ def update_page(site, pagename, titles):
 
 
 conf = get_config('config.cnf')
-mwconf = dict(conf.items('mw'))
-site = mwclient.Site(mwconf['host'])
-site.login(mwconf['user'], mwconf['passwd'])
+mwsite = dict(conf.items('site'))
+mwoptions = dict(conf.items('options'))
+site = mwclient.Site(**mwsite)
 
 maintenance_exceptions = ['Mangler_interwiki', 'Kategorier_som_trenger_diffusjon', 'Artikler_som_bør_flettes', 'Artikler_som_bør_flyttes', 'Sider_som_er_foreslått_slettet', 'Kategorier_som_trenger_diffusjon', 'Kvinner', 'Menn']
 
