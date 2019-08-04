@@ -226,6 +226,8 @@ def main():
     site = mwclient.Site(**site_conf)
 
     hidden_cats = get_hidden_categories(db, 'Getting list of hidden categories')
+    hidden_cats.remove('Artikler_som_bør_flettes')
+    hidden_cats.remove('Sider_som_er_foreslått_slettet')
     dump_sorted(hidden_cats, 'hidden_cats.txt')
     fprint('Found %d hidden cats' % len(hidden_cats))
 
