@@ -1,2 +1,2 @@
-oursql
 mwclient
+PyMySQL
