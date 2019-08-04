@@ -2,13 +2,14 @@
 # vim: sw=4 ts=4 expandtab ai
 import itertools
 import os
-import pymysql.cursors
-from pymysql.cursors import SSCursor
 import re
 from datetime import datetime
-import mwclient
 import configparser
 import logging
+
+import pymysql.cursors
+from pymysql.cursors import SSCursor
+import mwclient
 from tqdm import tqdm
 
 
